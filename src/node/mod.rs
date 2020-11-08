@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone)]
 pub struct Node{
     pub rgb:       (u8, u8, u8),
@@ -10,6 +9,7 @@ pub struct Node{
 
 impl Node{
 
+    //Creates a new node
     pub fn new_node(color: (u8, u8, u8), coords: (u32, u32)) -> Self{
         Node{
             rgb:       color,

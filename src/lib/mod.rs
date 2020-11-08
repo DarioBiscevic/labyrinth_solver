@@ -46,6 +46,8 @@ pub fn run(filename: String) -> Result<(), ()>{
 
                 //To store the "used" nodes
                 let mut used_stack: Vec<(u32, u32)> = Vec::new();
+
+                //Start the algorithm
                 let _ = dfs(
                     &tree,
                     start,
@@ -60,10 +62,14 @@ pub fn run(filename: String) -> Result<(), ()>{
 
                 let mut new_image: Vec<u8> = Vec::new();
 
+                println!("Calculating pixels that must be colored...");
                 let to_be_colored = pixels_to_color(path_stack);
+                println!("Done\n");
 
                 println!("Drawing...");
                 for elem in (0..vector.len()).step_by(3){
+
+                    //Convert the one-dimensional index to bi-dimensional coords
                     let pixel_coords = ((elem as u32/3)%rgb_image.dimensions().0, (elem as u32/3)/rgb_image.dimensions().0);
 
                     let pixel = (vector[elem], vector[elem+1], vector[elem+2]);
@@ -79,6 +85,7 @@ pub fn run(filename: String) -> Result<(), ()>{
                     }
                 }
 
+                //Save the pixel vector in a png file
                 let _ = image::save_buffer(
                     Path::new("./output.png"),
                     &new_image,
@@ -86,7 +93,7 @@ pub fn run(filename: String) -> Result<(), ()>{
                     rgb_image.dimensions().1,
                     image::ColorType::Rgb8
                 );
-                println!("Done!");
+                println!("Done!\n");
 
             }else{
                 println!("Invalid tree: 'start' and/or 'finish' not found");
@@ -105,6 +112,7 @@ pub fn run(filename: String) -> Result<(), ()>{
     }
 }
 
+//Function that creates a table (hashmap) with all the nodes
 fn tree_creation(vector: &[u8], dimensions: (u32, u32)) -> Result<(HashMap<(u32, u32), Vec<(u32, u32)>>, (u32, u32), (u32, u32)), ()>{
 
     let mut start:  Option<(u32, u32)> = None;
@@ -168,19 +176,12 @@ fn tree_creation(vector: &[u8], dimensions: (u32, u32)) -> Result<(HashMap<(u32,
         node_vector[element_index].assign_links(&cpy);
     }
     println!("Done\n");
-
-    /*
-    //Debug loop
-    for (index, node) in node_vector.iter().enumerate(){
-        println!("{}, {:?}", index, node);
-    }
-    println!("\n\n\n\n");
-    */
     
     println!("Preparing tree...");
-    let tree = create_nodes(&node_vector);
+    let tree = create_table(&node_vector);
     println!("Done\n");
     
+    //Return
     Ok(
         (
             tree,
@@ -190,7 +191,34 @@ fn tree_creation(vector: &[u8], dimensions: (u32, u32)) -> Result<(HashMap<(u32,
     )
 }
 
-fn create_nodes(node_vector: &[Node]) -> HashMap<(u32, u32), Vec<(u32, u32)>>{
+
+/*
+The logic behind this function:
+in order to make an efficient pathfinding system, we must eliminate all the
+"useless" pixels. In this case, we can use only the nodes on which a choice
+is possible or the nodes that are on corners. This means that the pixels
+inside a "corridor" are useless. 
+
+Examples:
+--------|   |
+| A===B===C |     - Here node A is on a corner, B is in a "corridor", C is on
+|  |----|   |       a "crossroad". It's inefficient to have A connected to B
+                    and B connected to C, because on B there is no choice; it
+                    is more efficient to connect directly A whith C (and,
+                    technically, viceversa);
+--------|   |
+| A=======C |
+|  |----|   |
+
+So, this function must find all the nodes that have only 2 links put in a
+straight line. Then the previous node (relative to the current) receives a link
+to the next (relative to the current) and this next node (relative to the
+current) receives a lint to the previous. This way, the middle node, the one in
+the corridor, is excluded from the list of usable nodes.
+
+*/
+//Don't know how to write this func without clone()-ing
+fn create_table(node_vector: &[Node]) -> HashMap<(u32, u32), Vec<(u32, u32)>>{
 
     let mut nodes = node_vector.to_owned();
     let mut keep_looping = true;
@@ -198,8 +226,6 @@ fn create_nodes(node_vector: &[Node]) -> HashMap<(u32, u32), Vec<(u32, u32)>>{
     while keep_looping{
 
         keep_looping = false;
-
-        //let cpy = nodes.clone();
 
         for (elem_index, element) in nodes.clone().into_iter().enumerate(){
             //Although clippy says so, it is not possible to collapse these two ifs
@@ -209,31 +235,35 @@ fn create_nodes(node_vector: &[Node]) -> HashMap<(u32, u32), Vec<(u32, u32)>>{
                     keep_looping = true;
     
                     /*
-                    if a b c are the nodes, and b is the current node,
+                    if a b c are the nodes, and b is the current ("useless") node,
                     eliminate in a the link to b and put instead the link to c
                     eliminate in c the link to b and put instead the link to a
                     */
-    
-                    //Tuple holds the coords of the previous node
-                    let tuple: Option<(usize, _)> = nodes
-                        .clone()
-                        .into_iter()
-                        .enumerate()
-                        .find(|(_, node)| node.coords == element.links[0]);
                     
-                    if let Some((index, _)) = tuple{
+                    let mut previous_node: Option<usize> = None;
+                    for node_index in 0..nodes.len(){
+                        if nodes[node_index].coords == element.links[0]{
+                            previous_node = Some(node_index);
+                            break;
+                        }
+                    }
+
+                    if let Some(index) = previous_node{
                         nodes[index].find_and_replace(element.coords, element.links[1]);
                         nodes[index].usable = true;
                     }
-    
-                    //Tuple holds the coords of the next node
-                    let tuple: Option<(usize, _)> = nodes
-                        .clone()
-                        .into_iter()
-                        .enumerate()
-                        .find(|(_, node)| node.coords == element.links[1]);
-                    
-                    if let Some((index, _)) = tuple{
+
+
+
+                    let mut next_node: Option<usize> = None;
+                    for node_index in 0..nodes.len(){
+                        if nodes[node_index].coords == element.links[1]{
+                            next_node = Some(node_index);
+                            break;
+                        }
+                    }
+
+                    if let Some(index) = next_node{
                         nodes[index].find_and_replace(element.coords, element.links[0]);
                         nodes[index].usable = true;
                     }
@@ -243,20 +273,19 @@ fn create_nodes(node_vector: &[Node]) -> HashMap<(u32, u32), Vec<(u32, u32)>>{
             }
 
             let cpy = nodes.clone();
-            nodes[elem_index].check_valid_links(&cpy);
-            
-            
+            nodes[elem_index].check_valid_links(&cpy);   
         }
     }
 
     let mut node_table: HashMap<(u32, u32), Vec<(u32, u32)>> = HashMap::new();
 
+    //Add to the table only the usable nodes
     for i in nodes.iter().filter(|node| node.usable){
         node_table.insert(i.coords, i.links.clone());
     }
     
     /*
-    Debug loop
+    //Debug loop
     for (index, node) in node_table.iter().enumerate(){
         //for (index, node) in node_vector.iter().enumerate(){
         println!("{}, {:?}", index, node);
@@ -280,20 +309,25 @@ fn dfs(
     path_stack: &mut Vec<(u32, u32)>,
     used_stack: &mut Vec<(u32, u32)>) -> Outcome{
 
-    
+    //If the node was already "discovered", return
     if used_stack.contains(&current){
         return Outcome::NotFound
     }
 
+    //Add to the path the current node
     path_stack.push(current);
+
+    //Return if current is reached
     if current == target{
         return Outcome::Found
     }
+
+    //"Mark as discovered" the current node
     used_stack.push(current);
 
-
+    //If there are any links, loop through every one of them, applying
+    //this same function
     let links = tree.get(&current);
-
     if let Some(vec) = links{
         for link in vec.iter(){
             let output = dfs(tree, *link, target, path_stack, used_stack);
@@ -303,13 +337,19 @@ fn dfs(
             }
         }
 
+        //If target was not found, remove from the path stack the node
+        //and return
         let _ = path_stack.pop();
         return Outcome::NotFound
     }
     
+    //Return if there are no links available for the current node
     Outcome::NotFound
 }
 
+
+//Returns the array with all the pixels that must be colored
+//Calculates the pixels that are on the line between two coords
 fn pixels_to_color(path: Vec<(u32, u32)>) -> Vec<(u32, u32)>{
 
     let mut pixels_to_color = Vec::new();
