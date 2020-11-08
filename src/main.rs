@@ -7,6 +7,7 @@ Red   = finish
 */
 
 mod lib;
+mod node;
 use lib::*;
 
 use std::env;
