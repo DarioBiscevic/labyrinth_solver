@@ -5,6 +5,9 @@ the green block and finishes on the red block, passing on the white pixels.
 Since it uses the Depth-First-Search algorithm, the output probably won't be the
 shortest possible path.
 
+![example 1](example-1.png)
+![example 2](example-2.png)
+
 ## Input rules
 The input should be an RGB8 image, containing at least one green pixel and one red pixel,
 being the beginning and the end of the maze; all the black pixels are treated as "walls"

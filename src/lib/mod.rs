@@ -256,6 +256,7 @@ fn create_table(node_vector: &[Node]) -> HashMap<(u32, u32), Vec<(u32, u32)>>{
 
 
                     let mut next_node: Option<usize> = None;
+                    
                     for node_index in 0..nodes.len(){
                         if nodes[node_index].coords == element.links[1]{
                             next_node = Some(node_index);
@@ -355,6 +356,9 @@ fn pixels_to_color(path: Vec<(u32, u32)>) -> Vec<(u32, u32)>{
     let mut pixels_to_color = Vec::new();
 
     for pixel in 0..(path.len()-1){
+
+        pixels_to_color.push(path[pixel]);
+
         if path[pixel].0 == path[pixel+1].0{
 
             if path[pixel+1].1 >= path[pixel].1{
