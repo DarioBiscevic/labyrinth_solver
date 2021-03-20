@@ -66,3 +66,8 @@ iterating through it
 - In order to draw on the output file, a function calculates,
 having the path array, all the pixels that must be drawn;
 - Finally, the output file is created;
+
+## Necessary Note
+Although the idea of removing the useless nodes, it is proven sperimentally
+that this process is less efficient than directly executing DFS through all the
+pixels, "raw".
